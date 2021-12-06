@@ -1,15 +1,21 @@
 // A script that sets specific LED colors based on audio input.
+// Designed for RGB LED strip.
+// Authors: Megan Ku and Isabel Serrato
 
 #include <Adafruit_NeoPixel.h>
 #include <arduinoFFT.h>
 
-arduinoFFT FFT = arduinoFFT(); // create FFT object
-
+arduinoFFT FFT_low = arduinoFFT(); // create FFT object
+arduinoFFT FFT_mid = arduinoFFT();
+arduinoFFT FFT_high = arduinoFFT();
 /*
 FFT constants
 */
-const uint16_t samples = 256; //This value MUST ALWAYS be a power of 2
-const double samplingFrequency = 9000;
+const uint16_t samples = 128; // This value MUST ALWAYS be a power of 2 for the FFT function
+const double samplingFrequency = 9000; // Stay below 10kHz
+unsigned int sampling_period_us;
+unsigned long microseconds;
+
 /*
 These are the input and output vectors
 Input vectors receive computed results from FFT
@@ -26,29 +32,29 @@ double vImag2[samples];
 #define SCL_FREQUENCY 0x02
 #define SCL_PLOT 0x03
 
-// Which pin on the Arduino is connected to the NeoPixels?
+// Digital pin for LED strip
 #define LED_PIN 53
 
-// How many NeoPixels are attached to the Arduino?
+// Number of LED in strip
 #define LED_COUNT 120
 
-#define LowBand A0
-#define MidBand A1
-#define UpperBand A2
+// Define microphone inputs
+#define LowBand A5
+#define MidBand A10
+#define UpperBand A0
 
 #define MAX_BRIGHT 255
 
-// Declare our NeoPixel strip object:
+// Declare NeoPixel strip object
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 // Argument 1 = Number of pixels in NeoPixel strip
 // Argument 2 = Arduino pin number (most are valid)
 // Argument 3 = Pixel type flags, add together as needed:
 //   NEO_KHZ800  800 KHz bitstream (most NeoPixel products w/WS2812 LEDs)
-//   NEO_KHZ400  400 KHz (classic 'v1' (not v2) FLORA pixels, WS2811 drivers)
 //   NEO_GRB     Pixels are wired for GRB bitstream (most NeoPixel products)
-//   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
-//   NEO_RGBW    Pixels are wired for RGBW bitstream (NeoPixel RGBW products)
 
+
+// Object for storing FFT peak frequencies
 class peak_FFT {
   public:
     int x_low;
@@ -57,6 +63,7 @@ class peak_FFT {
 };
 
 void setup() {
+  sampling_period_us = round(1000000*(1.0/samplingFrequency));
   strip.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
   strip.show();            // Turn OFF all pixels ASAP
   strip.setBrightness(50); // Set BRIGHTNESS to about 1/5 (max = 255)
@@ -67,40 +74,69 @@ void setup() {
 // Main loop
 void loop() {
   /* Collect data */
+  microseconds = micros();
   for (uint16_t i = 0; i < samples; i++)
   {
     vReal0[i] = analogRead(LowBand);
     vReal1[i] = analogRead(MidBand);
     vReal2[i] = analogRead(UpperBand);
+//
+    Serial.print(vReal0[i]);
+    Serial.print("\t");
+    Serial.print(vReal1[i]);
+    Serial.print("\t");
+    Serial.println(vReal2[i]);
 
-    vImag0[i] = 0.0; //Imaginary part must be zeroed in case of looping to avoid wrong calculations and overflows
-    vImag1[i] = 0.0; //Imaginary part must be zeroed in case of looping to avoid wrong calculations and overflows
-    vImag2[i] = 0.0; //Imaginary part must be zeroed in case of looping to avoid wrong calculations and overflows
+//    
+    //Imaginary part must be zeroed in case of looping to avoid wrong calculations and overflows
+    vImag0[i] = 0.0; 
+    vImag1[i] = 0.0;
+    vImag2[i] = 0.0;
+
+    while(micros() - microseconds < sampling_period_us){
+      //empty loop
+    }
+    microseconds += sampling_period_us;
   }
   
-   FFT.Windowing(vReal0, samples, FFT_WIN_TYP_HAMMING, FFT_FORWARD);  /* Weigh data */
-   FFT.Windowing(vReal1, samples, FFT_WIN_TYP_HAMMING, FFT_FORWARD);
-   FFT.Windowing(vReal2, samples, FFT_WIN_TYP_HAMMING, FFT_FORWARD);
-   FFT.Compute(vReal0, vImag0, samples, FFT_FORWARD); /* Compute FFT */
-   FFT.Compute(vReal1, vImag1, samples, FFT_FORWARD);
-   FFT.Compute(vReal2, vImag2, samples, FFT_FORWARD);
-   FFT.ComplexToMagnitude(vReal0, vImag0, samples); /* Compute magnitudes */
-   FFT.ComplexToMagnitude(vReal1, vImag1, samples);
-   FFT.ComplexToMagnitude(vReal2, vImag2, samples);
+   FFT_low.Windowing(vReal0, samples, FFT_WIN_TYP_HAMMING, FFT_FORWARD);  /* Weigh data */
+   FFT_mid.Windowing(vReal1, samples, FFT_WIN_TYP_HAMMING, FFT_FORWARD);
+   FFT_high.Windowing(vReal2, samples, FFT_WIN_TYP_HAMMING, FFT_FORWARD);
+   
+   FFT_low.Compute(vReal0, vImag0, samples, FFT_FORWARD); /* Compute FFT */
+   FFT_mid.Compute(vReal1, vImag1, samples, FFT_FORWARD);
+   FFT_high.Compute(vReal2, vImag2, samples, FFT_FORWARD);
+   
+   FFT_low.ComplexToMagnitude(vReal0, vImag0, samples); /* Compute magnitudes */
+   FFT_mid.ComplexToMagnitude(vReal1, vImag1, samples);
+   FFT_high.ComplexToMagnitude(vReal2, vImag2, samples);
+
+   // Create peaks to store output
    peak_FFT peaks;
-   peaks.x_low = (int) FFT.MajorPeak(vReal0, samples, samplingFrequency) % LED_COUNT; // TODO: change to rescale using map()
-   peaks.x_mid = (int) FFT.MajorPeak(vReal1, samples, samplingFrequency) % LED_COUNT;
-   peaks.x_high = (int) FFT.MajorPeak(vReal2, samples, samplingFrequency) % LED_COUNT;
-    Serial.print("Peaks: ");
-    Serial.print("\t");
-    Serial.print(FFT.MajorPeak(vReal0, samples, samplingFrequency));
-    Serial.print("\t");
-    Serial.print(FFT.MajorPeak(vReal1, samples, samplingFrequency));
-    Serial.print("\t");
-    Serial.println(FFT.MajorPeak(vReal2, samples, samplingFrequency));
-   colorPeak(peaks, 10, 100); 
+
+   // Calculate output and rescale based on number of LEDs
+   double low = FFT_low.MajorPeak(vReal0, samples, samplingFrequency);
+   double mid = FFT_mid.MajorPeak(vReal1, samples, samplingFrequency);
+   double high = FFT_high.MajorPeak(vReal2, samples, samplingFrequency);
+
+   Serial.print(low);
+   Serial.print("\t");
+   Serial.print(mid);
+   Serial.print("\t");
+   Serial.println(high);
+   Serial.println("-");
+   
+   peaks.x_low =  constrain(map((long) low, 16, 241, 0, LED_COUNT - 1), 0, LED_COUNT - 1); // TODO: change to rescale using map()
+   peaks.x_mid =  constrain(map((long) mid, 263, 1771, 0, LED_COUNT - 1), 0, LED_COUNT - 1);
+   peaks.x_high =  constrain(map((long) high, 2635, 7957, 0, LED_COUNT - 1), 0, LED_COUNT - 1);
+
+
+
+   // Change LED colors
+   colorPeak(peaks, 10, 50); 
 }
 
+// Change LED colors to reflect peaks of signal
 void colorPeak(peak_FFT peak, int spread, int wait) {
   strip.clear();
   int red;
