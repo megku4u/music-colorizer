@@ -88,7 +88,7 @@ while true
     ylim([0 100]);
     xlabel("Frequency (Hz)");
     ylabel("Magnitude");
-    title("Frequency Response of Sample Tune");
+    title("Frequency Response of Live Audio");
     
     figure(2);
     plot(LED_range, LED_set(:,1), "r", LED_range, LED_set(:,2), "g", LED_range, LED_set(:,3), "b");
