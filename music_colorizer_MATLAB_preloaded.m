@@ -11,6 +11,9 @@ MATLAB Support Package for Arduino Hardware
 Neopixel Add-On Library for MATLAB
 %}
 
+clear all;
+
+
 %INITIALIZE ARDUINO
 COM = 'COM3';
 ARDUINO_TYPE = 'Mega2560';
@@ -35,7 +38,6 @@ LED_range = 1:NUM_LED;
 FFT_samp = round(Fs * 0.16);
 
 % Bandpass filter cutoffs
-
 FREQ_LOW = [129, 265];
 FREQ_MID = [247, 523.4];
 FREQ_HIGH = [523, 1047];

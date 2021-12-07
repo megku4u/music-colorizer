@@ -1,4 +1,6 @@
 %{
+DEPRECATED VERSION
+
 Proof of concept script that takes frequency response of signal, applies
 ideal bandpass filters, and converts peaks to LED light intensities.
 
