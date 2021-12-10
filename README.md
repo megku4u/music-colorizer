@@ -2,6 +2,9 @@
 ## By Megan Ku and Isabel Serrato
 Final project for Introduction to Analog and Digital Communications.
 
+## Demo
+A link to a video demo of the colorizer can be found [here](https://youtu.be/6El5UoysoWc).
+
 ## Requirements
 ### Software:
 - MATLAB (Written in R2021a)
