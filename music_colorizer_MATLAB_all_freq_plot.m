@@ -37,8 +37,8 @@ FREQ_MID = [247, 523.4];
 FREQ_HIGH = [523, 1047];
 
 % Initialize Arduino Mega 2560 - adjust port number as necessary
-a = arduino(COM, ARDUINO_TYPE, 'Libraries', 'Adafruit/NeoPixel');
-neostrip = addon(a, 'Adafruit/NeoPixel', DIG_PIN, NUM_LED);
+% a = arduino(COM, ARDUINO_TYPE, 'Libraries', 'Adafruit/NeoPixel');
+% neostrip = addon(a, 'Adafruit/NeoPixel', DIG_PIN, NUM_LED);
 
 [x_full, Fs] = audioread("data/bensound-sunny.mp3");
 % soundsc(x_full, Fs);
@@ -67,17 +67,20 @@ LED_set = zeros(NUM_LED, 3);
 l = (FREQ_LOW(1) < f) & (f < FREQ_LOW(2));
 y_low = y_full(l,:);
 y_low = imresize(y_low, [120, 2]);
-LED_set(:, 1) = y_low(:,2) / max(y_low(:, 2));
+LED_set(:, 1) = y_low(:,2);
 
 m = (FREQ_MID(1) < f) & (f < FREQ_MID(2));
 y_mid = y_full(m,:);
 y_mid = imresize(y_mid, [120, 2]);
-LED_set(:, 2) = y_mid(:,2) / max(y_mid(:, 2));
+LED_set(:, 2) = y_mid(:,2);
 
 h = (FREQ_HIGH(1) < f) & (f < FREQ_HIGH(2));
 y_high = y_full(h,:);
 y_high = imresize(y_high, [120, 2]);
-LED_set(:, 3) = y_high(:,2) / max(y_high(:, 2));
+LED_set(:, 3) = y_high(:,2);
+
+% Normalization
+LED_set = abs(LED_set)./ max(max(LED_set)); 
 
 LED_set = abs(LED_set) * max_brightness;
 
@@ -88,7 +91,7 @@ ylim([0 1150]);
 xlabel("Frequency (Hz)");
 ylabel("Magnitude");
 title("Frequency Response of Sample Tune");
-legend("Low Range (Red)", "Middle Range (Green)", "Upper Range (Blue)");
+legend("C3 Octave (Red)", "C4 Octave (Green)", "C5 Octave (Blue)");
 
 % Plot LED color assignments
 figure(3);
@@ -97,5 +100,5 @@ ylim([0,0.8]);
 xlabel("LED Number");
 ylabel("LED Brightness");
 title("LED Color Assignment for Sample Tune");
-legend("Low Range (Red)", "Middle Range (Green)", "Upper Range (Blue)");
-writeColor(neostrip, LED_range, LED_set);
+legend("C3 Octave (Red)", "C4 Octave (Green)", "C5 Octave (Blue)");
+% writeColor(neostrip, LED_range, LED_set);
