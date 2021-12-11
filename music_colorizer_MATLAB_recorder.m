@@ -43,7 +43,7 @@ neostrip = addon(a, 'Adafruit/NeoPixel', DIG_PIN, NUM_LED);
 while true
     
     % Record snippet of microphone audio
-    recordblocking(recorder, 0.1);
+    recordblocking(recorder, 0.2);
     x = getaudiodata(recorder);
     
     % Run FFT and take magnitude
